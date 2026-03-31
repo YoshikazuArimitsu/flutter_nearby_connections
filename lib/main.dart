@@ -39,6 +39,7 @@ class _HomePageState extends State<HomePage> {
   bool isDiscovering = false;
   String? connectedEndpointId;
   String logText = '';
+  bool isSender = false;
   double sendProgress = 0.0;
   double receiveProgress = 0.0;
 
@@ -188,6 +189,10 @@ class _HomePageState extends State<HomePage> {
         file.path,
       );
       _appendLog('Sending file payloadId=$payloadId');
+
+      setState(() {
+        isSender = true;
+      });
     } catch (e) {
       _appendLog('Error sendPayload: $e');
     }
@@ -218,8 +223,11 @@ class _HomePageState extends State<HomePage> {
       // 送信側・受信側どちらでも同じコールバックが来るので、
       // とりあえず両方に反映している
       setState(() {
-        sendProgress = progress;
-        receiveProgress = progress;
+        if (isSender) {
+          sendProgress = progress;
+        } else {
+          receiveProgress = progress;
+        }
 
         if (transferStartTime == null) {
           transferStartTime = DateTime.now();
@@ -240,6 +248,7 @@ class _HomePageState extends State<HomePage> {
         'Payload SUCCESS: id=${update.id} File size: $totalBytes bytes, Time: ${seconds.toStringAsFixed(2)}s, Speed: ${speed.toStringAsFixed(2)} MB/s',
       );
       setState(() {
+        isSender = false;
         sendProgress = 0.0;
         receiveProgress = 0.0;
         transferStartTime = null;
