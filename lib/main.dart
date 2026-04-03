@@ -1,14 +1,16 @@
+import 'dart:async';
 import 'dart:io';
 import 'package:flutter/material.dart';
+import 'package:flutter_nearby_connections/provider.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:flutter_riverpod/legacy.dart';
 import 'package:nearby_connections/nearby_connections.dart';
 import 'package:file_picker/file_picker.dart';
-import 'package:path_provider/path_provider.dart';
-import 'package:permission_handler/permission_handler.dart';
 
 const Strategy strategy = Strategy.P2P_CLUSTER;
 
 void main() {
-  runApp(const MyApp());
+  runApp(const ProviderScope(child: MyApp()));
 }
 
 class MyApp extends StatelessWidget {
@@ -17,275 +19,140 @@ class MyApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      title: 'Nearby File Transfer Demo',
-      theme: ThemeData(
-        colorScheme: ColorScheme.fromSeed(seedColor: Colors.blue),
-        useMaterial3: true,
-      ),
-      home: const HomePage(),
+      title: 'Nearby + Riverpod Sample',
+      theme: ThemeData(primarySwatch: Colors.blue),
+      home: NearbyHomePage(),
     );
   }
 }
 
-class HomePage extends StatefulWidget {
-  const HomePage({super.key});
+final logProvider = StateProvider<String>((ref) => "");
+
+class NearbyHomePage extends ConsumerStatefulWidget {
+  const NearbyHomePage({super.key});
 
   @override
-  State<HomePage> createState() => _HomePageState();
+  ConsumerState<NearbyHomePage> createState() => _NearbyHomePageState();
 }
 
-class _HomePageState extends State<HomePage> {
-  bool isAdvertising = false;
-  bool isDiscovering = false;
-  String? connectedEndpointId;
-  String logText = '';
-  bool isSender = false;
-  double sendProgress = 0.0;
-  double receiveProgress = 0.0;
-
-  DateTime? transferStartTime;
-  int totalBytes = 0;
-
-  final Map<int, String> _incomingFileTempPath = {};
+class _NearbyHomePageState extends ConsumerState<NearbyHomePage> {
+  StreamSubscription? _subscription;
 
   @override
   void initState() {
     super.initState();
-    _requestPermissions();
-  }
 
-  Future<void> _requestPermissions() async {
-    await [
-      Permission.location,
-      Permission.bluetoothScan,
-      Permission.bluetoothConnect,
-      Permission.bluetoothAdvertise,
-      Permission.nearbyWifiDevices,
-    ].request();
-  }
+    _subscription = ref.read(nearbyProvider.notifier).nearby.events.listen((
+      event,
+    ) {
+      switch (event.type) {
+        case "startAdvertising":
+          _appendLog(ref, 'Start advertising...');
+          break;
+        case "stopAdvertising":
+          _appendLog(ref, 'Stop advertising.');
+          break;
+        case "startDiscovery":
+          _appendLog(ref, 'Start discovery...');
+          break;
+        case "stopDiscovery":
+          _appendLog(ref, 'Stop discovery.');
+          break;
 
-  void _appendLog(String msg) {
-    setState(() {
-      logText += '$msg\n';
-    });
-  }
+        case "connectionInitiated":
+          _appendLog(ref, 'Connection initiated: ${event.endpointId}');
+          break;
+        case "endpointFound":
+          // data: endpointId
+          _appendLog(ref, 'Endpoint found: ${event.endpointId}');
+          break;
+        case "endpointLost":
+          // data: endpointId
+          _appendLog(ref, 'Endpoint lost: ${event.endpointId}');
+          break;
+        case "disconnected":
+          // data: endpointId
+          _appendLog(ref, 'Disconnected: ${event.endpointId}');
+          break;
+        case "connectionResult":
+          _appendLog(ref, 'Connection result: ${event.data}');
+          break;
 
-  Future<void> _startAdvertising() async {
-    try {
-      await Nearby().startAdvertising(
-        'sender-device',
-        strategy,
-        onConnectionInitiated: (id, info) {
-          _appendLog('onConnectionInitiated from $id (${info.endpointName})');
-          Nearby().acceptConnection(
-            id,
-            onPayLoadRecieved: _onPayloadReceived,
-            onPayloadTransferUpdate: _onPayloadTransferUpdate,
+        case "startSendPayload":
+          // data: payloadId
+          _appendLog(ref, 'Start sending payload: ${event.data}');
+          break;
+
+        case "payloadReceived":
+          final payload = event.data as Payload;
+          _appendLog(
+            ref,
+            'Payload received: EndpointID: ${event.endpointId} PayloadID: ${payload.id}',
           );
-          setState(() {
-            connectedEndpointId = id;
-          });
-        },
-        onConnectionResult: (id, status) {
-          _appendLog('onConnectionResult: $id -> $status');
-        },
-        onDisconnected: (id) {
-          _appendLog('onDisconnected: $id');
-          setState(() {
-            connectedEndpointId = null;
-          });
-        },
-      );
-      setState(() {
-        isAdvertising = true;
-      });
-      _appendLog('Advertising started');
-    } catch (e) {
-      _appendLog('Error startAdvertising: $e');
-    }
-  }
-
-  Future<void> _stopAdvertising() async {
-    await Nearby().stopAdvertising();
-    setState(() {
-      isAdvertising = false;
-    });
-    _appendLog('Advertising stopped');
-  }
-
-  Future<void> _startDiscovery() async {
-    try {
-      await Nearby().startDiscovery(
-        'receiver-device',
-        strategy,
-        onEndpointFound: (id, name, serviceId) {
-          _appendLog('onEndpointFound: $id ($name)');
-          Nearby().requestConnection(
-            'receiver-device',
-            id,
-            onConnectionInitiated: (id, info) {
-              _appendLog('onConnectionInitiated (receiver) from $id');
-              Nearby().acceptConnection(
-                id,
-                onPayLoadRecieved: _onPayloadReceived,
-                onPayloadTransferUpdate: _onPayloadTransferUpdate,
-              );
-              setState(() {
-                connectedEndpointId = id;
-              });
-            },
-            onConnectionResult: (id, status) {
-              _appendLog('onConnectionResult (receiver): $id -> $status');
-            },
-            onDisconnected: (id) {
-              _appendLog('onDisconnected (receiver): $id');
-              setState(() {
-                connectedEndpointId = null;
-              });
-            },
+          break;
+        case "payloadTransferUpdate":
+          final payload = event.data as PayloadTransferUpdate;
+          _appendLog(
+            ref,
+            'Payload transfer update: EndpointID: ${event.endpointId} PayloadID: ${payload.id} status: ${payload.status} data: ${payload.bytesTransferred}/${payload.totalBytes}',
           );
-        },
-        onEndpointLost: (id) {
-          _appendLog('onEndpointLost: $id');
-        },
-      );
-      setState(() {
-        isDiscovering = true;
-      });
-      _appendLog('Discovery started');
-    } catch (e) {
-      _appendLog('Error startDiscovery: $e');
-    }
-  }
-
-  Future<void> _stopDiscovery() async {
-    await Nearby().stopDiscovery();
-    setState(() {
-      isDiscovering = false;
-    });
-    _appendLog('Discovery stopped');
-  }
-
-  Future<void> _sendFile() async {
-    if (connectedEndpointId == null) {
-      _appendLog('No connected endpoint');
-      return;
-    }
-
-    final result = await FilePicker.platform.pickFiles();
-    if (result == null || result.files.single.path == null) {
-      _appendLog('File picking cancelled');
-      return;
-    }
-
-    final file = File(result.files.single.path!);
-    _appendLog('Selected file: ${file.path}');
-
-    try {
-      // final payload = Payload.fromFile(file);
-      // await Nearby().sendPayload(connectedEndpointId!, payload);
-      var payloadId = await Nearby().sendFilePayload(
-        connectedEndpointId!,
-        file.path,
-      );
-      _appendLog('Sending file payloadId=$payloadId');
-
-      setState(() {
-        isSender = true;
-      });
-    } catch (e) {
-      _appendLog('Error sendPayload: $e');
-    }
-  }
-
-  void _onPayloadReceived(String endpointId, Payload payload) async {
-    if (payload.type == PayloadType.FILE) {
-      final tempPath = payload.filePath!;
-      _appendLog(
-        'File payload received (temp): id=${payload.id}, path=$tempPath',
-      );
-      _incomingFileTempPath[payload.id] = tempPath;
-    } else if (payload.type == PayloadType.BYTES) {
-      final data = String.fromCharCodes(payload.bytes!);
-      _appendLog('Bytes payload received: $data');
-    }
-  }
-
-  void _onPayloadTransferUpdate(
-    String endpointId,
-    PayloadTransferUpdate update,
-  ) async {
-    final progress = update.totalBytes == 0
-        ? 0.0
-        : update.bytesTransferred / update.totalBytes;
-
-    if (update.status == PayloadStatus.IN_PROGRESS) {
-      // 送信側・受信側どちらでも同じコールバックが来るので、
-      // とりあえず両方に反映している
-      setState(() {
-        if (isSender) {
-          sendProgress = progress;
-        } else {
-          receiveProgress = progress;
-        }
-
-        if (transferStartTime == null) {
-          transferStartTime = DateTime.now();
-          totalBytes = update.totalBytes;
-        }
-      });
-    }
-
-    if (update.status == PayloadStatus.SUCCESS) {
-      final end = DateTime.now();
-      final duration = end.difference(transferStartTime!);
-      final seconds = duration.inMilliseconds / 1000;
-
-      final mb = totalBytes / (1024 * 1024);
-      final speed = mb / seconds; // MB/s
-
-      _appendLog(
-        'Payload SUCCESS: id=${update.id} File size: $totalBytes bytes, Time: ${seconds.toStringAsFixed(2)}s, Speed: ${speed.toStringAsFixed(2)} MB/s',
-      );
-      setState(() {
-        isSender = false;
-        sendProgress = 0.0;
-        receiveProgress = 0.0;
-        transferStartTime = null;
-      });
-
-      // FilePayload の場合、temp ファイルを正式な場所に移動
-      if (_incomingFileTempPath.containsKey(update.id)) {
-        final tempPath = _incomingFileTempPath[update.id]!;
-        final dir = await getApplicationDocumentsDirectory();
-        final newPath = '${dir.path}/received_${update.id}.bin';
-        final file = File(tempPath);
-        await file.rename(newPath);
-        _appendLog('File saved: $newPath');
-        _incomingFileTempPath.remove(update.id);
+          break;
       }
-    }
-
-    if (update.status == PayloadStatus.FAILURE) {
-      _appendLog('Payload FAILURE: id=${update.id}');
-      setState(() {
-        sendProgress = 0.0;
-        receiveProgress = 0.0;
-      });
-    }
+    });
   }
 
   @override
   void dispose() {
-    Nearby().stopAdvertising();
-    Nearby().stopDiscovery();
-    Nearby().stopAllEndpoints();
     super.dispose();
+    _subscription?.cancel();
+  }
+
+  void _appendLog(WidgetRef ref, String msg) {
+    ref.read(logProvider.notifier).state += '$msg\n';
+  }
+
+  Future<void> _sendFile(WidgetRef ref, String? endpointId) async {
+    final controller = ref.read(nearbyProvider.notifier);
+
+    final result = await FilePicker.platform.pickFiles();
+    if (result == null || result.files.single.path == null) {
+      _appendLog(ref, 'File picking cancelled');
+      return;
+    }
+
+    final file = File(result.files.single.path!);
+    _appendLog(ref, 'Selected file: ${file.path}');
+
+    try {
+      var endpoints = endpointId != null
+          ? [endpointId]
+          : ref.read(nearbyProvider).endpoints;
+
+      for (final endpoint in endpoints) {
+        final payloadId = await controller.sendFile(endpoint, file.path);
+        _appendLog(ref, 'Sending to $endpoint, payloadId=$payloadId');
+      }
+    } catch (e) {
+      _appendLog(ref, 'Error sendPayload: $e');
+    }
+  }
+
+  Future<void> _disconnect(WidgetRef ref, String endpointId) async {
+    final controller = ref.read(nearbyProvider.notifier);
+
+    try {
+      await controller.disconnectEndpoint(endpointId);
+      _appendLog(ref, 'Disconnect from $endpointId ...');
+    } catch (e) {
+      _appendLog(ref, 'Error Disconnect: $e');
+    }
   }
 
   @override
   Widget build(BuildContext context) {
-    final isConnected = connectedEndpointId != null;
+    final state = ref.watch(nearbyProvider);
+    final logText = ref.watch(logProvider);
+    final controller = ref.read(nearbyProvider.notifier);
 
     return Scaffold(
       appBar: AppBar(title: const Text('Nearby File Transfer Demo')),
@@ -298,46 +165,59 @@ class _HomePageState extends State<HomePage> {
               mainAxisAlignment: MainAxisAlignment.spaceAround,
               children: [
                 ElevatedButton(
-                  onPressed: isAdvertising
-                      ? _stopAdvertising
-                      : _startAdvertising,
+                  onPressed: state.isAdvertising
+                      ? controller.stopAdvertising
+                      : controller.startAdvertising,
                   child: Text(
-                    isAdvertising ? 'Stop Advertising' : 'Start Advertising',
+                    state.isAdvertising
+                        ? 'Stop Advertising'
+                        : 'Start Advertising',
                   ),
                 ),
                 ElevatedButton(
-                  onPressed: isDiscovering ? _stopDiscovery : _startDiscovery,
+                  onPressed: state.isDiscovering
+                      ? controller.stopDiscovery
+                      : controller.startDiscovery,
                   child: Text(
-                    isDiscovering ? 'Stop Discovery' : 'Start Discovery',
+                    state.isDiscovering ? 'Stop Discovery' : 'Start Discovery',
                   ),
                 ),
               ],
             ),
-            const SizedBox(height: 8),
-            Text('Connected endpoint: ${connectedEndpointId ?? "None"}'),
-
-            const SizedBox(height: 16),
-            // 送信ボタン
-            ElevatedButton.icon(
-              onPressed: isConnected ? _sendFile : null,
-              icon: const Icon(Icons.send),
-              label: const Text('Send File'),
-            ),
-
-            const SizedBox(height: 16),
-            // 送信進捗
             Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                const Text('Send Progress'),
-                LinearProgressIndicator(value: sendProgress, minHeight: 6),
-                const SizedBox(height: 8),
-                const Text('Receive Progress'),
-                LinearProgressIndicator(value: receiveProgress, minHeight: 6),
-              ],
+              children: state.endpoints
+                  .map(
+                    (e) => Row(
+                      children: [
+                        Text('EndpointID : $e'),
+                        const SizedBox(width: 16),
+                        // 送信ボタン
+                        ElevatedButton.icon(
+                          onPressed: () => _sendFile(ref, e),
+                          icon: const Icon(Icons.send),
+                          label: Text('Send to $e'),
+                        ),
+                        const SizedBox(width: 16),
+                        // 切断ボタン
+                        ElevatedButton.icon(
+                          onPressed: () => _disconnect(ref, e),
+                          icon: const Icon(Icons.close),
+                          label: Text('Disconnect from $e'),
+                        ),
+                      ],
+                    ),
+                  )
+                  .toList(),
             ),
 
-            const SizedBox(height: 16),
+            state.endpoints.isEmpty
+                ? const SizedBox.shrink()
+                : ElevatedButton.icon(
+                    onPressed: () => _sendFile(ref, null),
+                    icon: const Icon(Icons.send),
+                    label: Text('Send to All Endpoints'),
+                  ),
+
             const Divider(),
             const Align(alignment: Alignment.centerLeft, child: Text('Log')),
             const SizedBox(height: 4),
