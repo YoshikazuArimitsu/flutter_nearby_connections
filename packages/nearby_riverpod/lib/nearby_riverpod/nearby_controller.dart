@@ -1,7 +1,6 @@
-// nearby_controller.dart
-import 'package:flutter_nearby_connections/provider.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'nearby_interface.dart';
+import 'provider.dart';
 
 class NearbyState {
   final bool isAdvertising;
@@ -47,9 +46,8 @@ class NearbyController extends Notifier<NearbyState> {
           break;
         case "disconnected":
           state = state.copyWith(
-            endpoints: state.endpoints
-                .where((e) => e != event.endpointId)
-                .toList(),
+            endpoints:
+                state.endpoints.where((e) => e != event.endpointId).toList(),
           );
           break;
       }

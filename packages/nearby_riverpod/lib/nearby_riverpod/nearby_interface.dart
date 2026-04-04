@@ -1,4 +1,3 @@
-// nearby_interface.dart
 abstract class INearbyService {
   Future<void> startAdvertising();
   Future<void> stopAdvertising();

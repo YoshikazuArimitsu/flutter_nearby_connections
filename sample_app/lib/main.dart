@@ -1,13 +1,10 @@
 import 'dart:async';
 import 'dart:io';
 import 'package:flutter/material.dart';
-import 'package:flutter_nearby_connections/provider.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_riverpod/legacy.dart';
-import 'package:nearby_connections/nearby_connections.dart';
 import 'package:file_picker/file_picker.dart';
-
-const Strategy strategy = Strategy.P2P_CLUSTER;
+import 'package:nearby_riverpod/nearby_riverpod/provider.dart';
 
 void main() {
   runApp(const ProviderScope(child: MyApp()));
@@ -84,14 +81,14 @@ class _NearbyHomePageState extends ConsumerState<NearbyHomePage> {
           break;
 
         case "payloadReceived":
-          final payload = event.data as Payload;
+          final payload = event.data;
           _appendLog(
             ref,
             'Payload received: EndpointID: ${event.endpointId} PayloadID: ${payload.id}',
           );
           break;
         case "payloadTransferUpdate":
-          final payload = event.data as PayloadTransferUpdate;
+          final payload = event.data;
           _appendLog(
             ref,
             'Payload transfer update: EndpointID: ${event.endpointId} PayloadID: ${payload.id} status: ${payload.status} data: ${payload.bytesTransferred}/${payload.totalBytes}',
