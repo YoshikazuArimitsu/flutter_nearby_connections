@@ -54,6 +54,10 @@ class NearbyController extends Notifier<NearbyState> {
     });
   }
 
+  Future<void> requestPermissions() async {
+    await nearby.requestPermissions();
+  }
+
   Future<void> startAdvertising() async {
     await nearby.startAdvertising();
     state = state.copyWith(isAdvertising: true);

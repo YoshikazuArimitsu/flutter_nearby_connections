@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'package:nearby_connections/nearby_connections.dart';
+import 'package:permission_handler/permission_handler.dart';
 import 'nearby_interface.dart';
 
 const Strategy strategy = Strategy.P2P_CLUSTER;
@@ -9,6 +10,17 @@ class NearbyServiceImpl implements INearbyService {
 
   @override
   Stream<NearbyEvent> get events => _controller.stream;
+
+  @override
+  Future<void> requestPermissions() async {
+    await [
+      Permission.location,
+      Permission.bluetoothScan,
+      Permission.bluetoothConnect,
+      Permission.bluetoothAdvertise,
+      Permission.nearbyWifiDevices,
+    ].request();
+  }
 
   @override
   Future<void> startAdvertising() async {

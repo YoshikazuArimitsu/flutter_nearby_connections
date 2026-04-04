@@ -39,6 +39,8 @@ class _NearbyHomePageState extends ConsumerState<NearbyHomePage> {
   void initState() {
     super.initState();
 
+    ref.read(nearbyProvider.notifier).requestPermissions();
+
     _subscription = ref.read(nearbyProvider.notifier).nearby.events.listen((
       event,
     ) {
@@ -60,15 +62,12 @@ class _NearbyHomePageState extends ConsumerState<NearbyHomePage> {
           _appendLog(ref, 'Connection initiated: ${event.endpointId}');
           break;
         case "endpointFound":
-          // data: endpointId
           _appendLog(ref, 'Endpoint found: ${event.endpointId}');
           break;
         case "endpointLost":
-          // data: endpointId
           _appendLog(ref, 'Endpoint lost: ${event.endpointId}');
           break;
         case "disconnected":
-          // data: endpointId
           _appendLog(ref, 'Disconnected: ${event.endpointId}');
           break;
         case "connectionResult":
@@ -76,7 +75,6 @@ class _NearbyHomePageState extends ConsumerState<NearbyHomePage> {
           break;
 
         case "startSendPayload":
-          // data: payloadId
           _appendLog(ref, 'Start sending payload: ${event.data}');
           break;
 
@@ -87,6 +85,7 @@ class _NearbyHomePageState extends ConsumerState<NearbyHomePage> {
             'Payload received: EndpointID: ${event.endpointId} PayloadID: ${payload.id}',
           );
           break;
+
         case "payloadTransferUpdate":
           final payload = event.data;
           _appendLog(

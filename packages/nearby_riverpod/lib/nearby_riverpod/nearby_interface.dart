@@ -1,10 +1,12 @@
 abstract class INearbyService {
+  Future<void> requestPermissions();
   Future<void> startAdvertising();
   Future<void> stopAdvertising();
   Future<void> startDiscovery();
   Future<void> stopDiscovery();
   Future<void> disconnectEndpoint(String endpointId);
   Future<int> sendFile(String endpointId, String filePath);
+
   Stream<NearbyEvent> get events;
 }
 

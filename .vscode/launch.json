@@ -5,21 +5,10 @@
     "version": "0.2.0",
     "configurations": [
         {
-            "name": "flutter_quick_share",
-            "request": "launch",
-            "type": "dart"
-        },
-        {
-            "name": "flutter_quick_share (profile mode)",
+            "name": "nearby_riverpod_sample",
             "request": "launch",
             "type": "dart",
-            "flutterMode": "profile"
-        },
-        {
-            "name": "flutter_quick_share (release mode)",
-            "request": "launch",
-            "type": "dart",
-            "flutterMode": "release"
+            "program": "sample_app/lib/main.dart"
         }
     ]
 }

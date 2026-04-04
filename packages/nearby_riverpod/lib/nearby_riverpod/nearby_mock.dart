@@ -9,6 +9,12 @@ class NearbyServiceMock implements INearbyService {
   Stream<NearbyEvent> get events => _controller.stream;
 
   @override
+  Future<void> requestPermissions() async {
+    await Future.delayed(Duration(milliseconds: 300));
+    _controller.add(NearbyEvent("mock_request_permissions"));
+  }
+
+  @override
   Future<void> startAdvertising() async {
     await Future.delayed(Duration(milliseconds: 300));
     _controller.add(NearbyEvent("mock_advertising"));
