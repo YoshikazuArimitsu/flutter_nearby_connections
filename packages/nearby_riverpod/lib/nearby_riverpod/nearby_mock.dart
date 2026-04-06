@@ -1,5 +1,7 @@
 // nearby_mock.dart
 import 'dart:async';
+import 'package:nearby_connections/nearby_connections.dart';
+
 import 'nearby_interface.dart';
 
 class NearbyServiceMock implements INearbyService {
@@ -15,7 +17,9 @@ class NearbyServiceMock implements INearbyService {
   }
 
   @override
-  Future<void> startAdvertising() async {
+  Future<void> startAdvertising(
+      {required String nickname,
+      Strategy strategy = Strategy.P2P_CLUSTER}) async {
     await Future.delayed(Duration(milliseconds: 300));
     _controller.add(NearbyEvent("mock_advertising"));
   }
@@ -27,7 +31,9 @@ class NearbyServiceMock implements INearbyService {
   }
 
   @override
-  Future<void> startDiscovery() async {
+  Future<void> startDiscovery(
+      {required String nickname,
+      Strategy strategy = Strategy.P2P_CLUSTER}) async {
     await Future.delayed(Duration(milliseconds: 300));
     _controller.add(NearbyEvent("mock_discovery"));
   }
