@@ -163,7 +163,8 @@ class _NearbyHomePageState extends ConsumerState<NearbyHomePage> {
                 ElevatedButton(
                   onPressed: state.isAdvertising
                       ? controller.stopAdvertising
-                      : controller.startAdvertising,
+                      : () =>
+                          controller.startAdvertising(nickname: 'Advertiser'),
                   child: Text(
                     state.isAdvertising
                         ? 'Stop Advertising'
@@ -173,7 +174,7 @@ class _NearbyHomePageState extends ConsumerState<NearbyHomePage> {
                 ElevatedButton(
                   onPressed: state.isDiscovering
                       ? controller.stopDiscovery
-                      : controller.startDiscovery,
+                      : () => controller.startDiscovery(nickname: 'Discoverer'),
                   child: Text(
                     state.isDiscovering ? 'Stop Discovery' : 'Start Discovery',
                   ),

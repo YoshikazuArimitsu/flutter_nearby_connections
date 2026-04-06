@@ -23,9 +23,11 @@ class NearbyServiceImpl implements INearbyService {
   }
 
   @override
-  Future<void> startAdvertising() async {
+  Future<void> startAdvertising(
+      {required String nickname,
+      Strategy strategy = Strategy.P2P_CLUSTER}) async {
     await Nearby().startAdvertising(
-      "deviceName",
+      nickname,
       strategy,
       onConnectionInitiated: (id, info) {
         _controller.add(NearbyEvent("connectionInitiated", endpointId: id));
@@ -73,15 +75,17 @@ class NearbyServiceImpl implements INearbyService {
   }
 
   @override
-  Future<void> startDiscovery() async {
+  Future<void> startDiscovery(
+      {required String nickname,
+      Strategy strategy = Strategy.P2P_CLUSTER}) async {
     await Nearby().startDiscovery(
-      "serviceId",
+      nickname,
       strategy,
       onEndpointFound: (id, name, serviceId) {
         _controller.add(NearbyEvent("endpointFound", endpointId: id));
 
         Nearby().requestConnection(
-          "deviceName",
+          nickname,
           id,
           onConnectionInitiated: (id, info) {
             _controller.add(NearbyEvent("connectionInitiated", endpointId: id));

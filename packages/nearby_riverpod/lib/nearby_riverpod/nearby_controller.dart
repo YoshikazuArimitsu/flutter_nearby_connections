@@ -1,4 +1,5 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:nearby_connections/nearby_connections.dart';
 import 'nearby_interface.dart';
 import 'provider.dart';
 
@@ -58,8 +59,10 @@ class NearbyController extends Notifier<NearbyState> {
     await nearby.requestPermissions();
   }
 
-  Future<void> startAdvertising() async {
-    await nearby.startAdvertising();
+  Future<void> startAdvertising(
+      {required String nickname,
+      Strategy strategy = Strategy.P2P_CLUSTER}) async {
+    await nearby.startAdvertising(nickname: nickname, strategy: strategy);
     state = state.copyWith(isAdvertising: true);
   }
 
@@ -68,8 +71,10 @@ class NearbyController extends Notifier<NearbyState> {
     state = state.copyWith(isAdvertising: false);
   }
 
-  Future<void> startDiscovery() async {
-    await nearby.startDiscovery();
+  Future<void> startDiscovery(
+      {required String nickname,
+      Strategy strategy = Strategy.P2P_CLUSTER}) async {
+    await nearby.startDiscovery(nickname: nickname, strategy: strategy);
     state = state.copyWith(isDiscovering: true);
   }
 
